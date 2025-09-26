@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <title>X News Feed (Demo)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #000; color: #e7e9ea;
+    }
+
+    .x-layout {
+      display: flex; flex-direction: row; justify-content: center; align-items: flex-start;
+      min-height: 100vh; width: 100vw; overflow-x: auto; background: #000;
+    }
+
+    /* Left Sidebar */
+    .sidebar-left {
+      width: 250px; min-width: 250px; max-width: 250px;
+      background: #000; border-right: 1px solid #2f3336;
+      display: flex; flex-direction: column; align-items: flex-end;
+      padding: 8px 0 4px 0; height: 92vh; position: sticky; top: 0; z-index: 100;
+    }
+    .x-logo-main { font-size: 2.2rem; font-weight: 900; color: #fff; margin-bottom: 24px; align-self: flex-start; padding-left: 32px; cursor: pointer; }
+    .x-nav-vertical { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+    .x-nav-vertical .nav-item {
+      display: flex; align-items: center; gap: 18px; font-size: 1.18rem; color: #e7e9ea; font-weight: 500;
+      padding: 12px 28px 12px 32px; border-radius: 32px; cursor: pointer; transition: background 0.18s; text-decoration: none;
+    }
+    .x-nav-vertical .nav-item.active, .x-nav-vertical .nav-item:hover {
+      background: #16181c; color: #1d9bf0; font-weight: 700;
+    }
+    .post-btn {
+      margin: 18px 0 16px 0; width: 80%; align-self: center; background: #181818; color: #fff; border: none;
+      border-radius: 32px; font-size: 1.1rem; font-weight: 700; padding: 12px 0; cursor: pointer; transition: background 0.18s;
+    }
+    .post-btn:hover { background: #222; }
+    .account-mini {
+      display: flex; align-items: center; gap: 10px; margin-top: auto; padding: 10px 16px; border-radius: 32px;
+      background: #16181c; width: 90%; align-self: flex-start; cursor: pointer;
+    }
+    .account-mini .avatar { width: 40px; height: 40px; border-radius: 50%; }
+    .account-info { display: flex; flex-direction: column; line-height: 1.1; }
+    .account-name { font-weight: 700; color: #e7e9ea; font-size: 15px; }
+    .account-handle { color: #71767b; font-size: 14px; }
+    .account-more { margin-left: auto; color: #71767b; font-size: 1.5rem; }
+
+    /* Main */
+    .main-content {
+      width: 680px; min-width: 0; background: #000; min-height: 100vh;
+      border-right: 1px solid #2f3336; display: flex; flex-direction: column; align-items: stretch; flex-shrink: 1; overflow-x: auto;
+    }
+
+    /* fix at top */
+.topbar{
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);    
+  width: min(680px, 100vw);        
+  z-index: 1000;
+  background: rgba(0,0,0,.9);
+  backdrop-filter: blur(6px);      /*  */
+  border-bottom: 1px solid #2f3336;
+  padding: 12px 20px 0 20px;
+}
+
+
+.main-content .feed-list{ margin-top: 60px; }
+
+@media (max-width: 768px){
+  .topbar{ left: 0; transform: none; width: 100vw; }
+}
+    /* === Mode toggle (news vs all) === */
+.mode-toggle {
+  display: flex; align-items: center; background: #16181c;
+  border: 1px solid #2f3336; border-radius: 20px; padding: 2px;
+  cursor: pointer; transition: border-color .18s;
+}
+.mode-toggle:hover { border-color: #1d9bf0; }
+/*  */
+.topbar-right { position: relative; gap: 6px; }
+
+/* */
+.info-btn{
+  width: 22px; height: 22px; border-radius: 9999px;
+  margin-left: 6px;
+  margin-top: 4px;
+  border: 1px solid #2f3336; background: transparent;
+  color: #8b949e; font-weight: 800; font-size: 12px; line-height: 20px;
+  text-align: center; cursor: pointer; user-select: none;
+}
+.info-btn:hover{ background: #1a1d20; color: #c2c7d0; border-color: #2f3336; }
+
+/*  */
+.mode-info-popover{
+  display: none;
+  position: absolute; right: 0; top: calc(100% + 8px);
+  width: 420px; max-width: min(92vw, 420px);
+  background: #16181c; color: #c9cbcf;
+  border: 1px solid #2f3336; border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.55);
+  padding: 12px 14px; z-index: 1200; line-height: 1.45; font-size: 13.5px;
+}
+.mode-info-popover.show{ display:block; }
+
+/*  */
+.mode-info-popover::before,
+.mode-info-popover::after{
+  content:""; position:absolute; right: 14px; border: 7px solid transparent;
+}
+.mode-info-popover::before{ top:-14px; border-bottom-color:#2f3336; }
+.mode-info-popover::after { top:-13px; border-bottom-color:#16181c; }
+.mode-info-popover p{ margin:6px 0; }
+.mode-info-popover ul{ margin:6px 0 0 1em; }
+.mode-info-popover li{ margin:4px 0; }
+
+
+.toggle-option {
+  padding: 6px 12px; border-radius: 18px; font-size: 13px;
+  font-weight: 600; color: #71767b; user-select: none; white-space: nowrap;
+}
+.toggle-option.active { background: #1d9bf0; color: #000; }
+
+    .pid-input {
+      background: #16181c; border: 1px solid #2f3336; border-radius: 16px; padding: 6px 10px; color: #e7e9ea; width: 180px;
+    }
+    .export-btn {
+      background: #1d9bf0; color: #fff; border: none; padding: 8px 12px; border-radius: 18px; font-size: 0.95rem; font-weight: 700; cursor: pointer;
+    }
+    .export-btn:hover { background: #1a8cd8; }
+    .settings-icon { font-size: 1.4rem; color: #71767b; cursor: pointer; padding: 8px; border-radius: 50%; transition: background 0.18s; }
+    .settings-icon:hover { background: #222; color: #1d9bf0; }
+
+    .feed-list { display: flex; flex-direction: column; gap: 16px; padding: 12px 0 24px 0; }
+
+    /* Tweet card */
+    .tweet-card {
+      background: #16181c; border-radius: 16px; padding: 16px 20px 12px 20px; border: 1px solid #2f3336;
+      display: flex; flex-direction: column; gap: 10px; transition: filter 0.2s;
+    }
+    .tweet-card.filtered {
+      position: relative; filter: brightness(0.6) grayscale(0.2);
+    }
+    .tweet-card.filtered::after {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.65);
+      border-radius: 16px; pointer-events: none; z-index: 2;
+    }
+    .tweet-card.filtered:hover { filter: brightness(0.6) grayscale(0.2); }
+    .tweet-card.filtered:hover::after { background: rgba(0,0,0,0.65); }
+
+    .tweet-header { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+    .tweet-header .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 8px; }
+    .tweet-username { font-weight: 700; color: #e7e9ea; margin-right: 4px; }
+    .verified { color: #1d9bf0; font-size: 1rem; margin-left: 2px; }
+    .tweet-handle, .tweet-time, .tweet-dot { color: #71767b; font-weight: 400; font-size: 15px; }
+    .tweet-actions-right { margin-left: auto; color: #71767b; font-size: 1.2rem; cursor: pointer; display: flex; gap: 8px; }
+
+    .tweet-body { color: #e7e9ea; font-size: 15px; line-height: 1.5; margin-left: 48px; }
+    .tweet-media { margin-left: 48px; margin-top: 8px; border-radius: 16px; overflow: hidden; background: transparent; position: relative; }
+    .tweet-media img { width: 100%; border-radius: 16px; display: block; }
+    .media-source { color: #71767b; font-size: 13px; margin: 4px 0 0 0; padding: 0 0 4px 0; }
+    /*  */
+.tweet-media.is-landscape { aspect-ratio: 16 / 9; }   /*  */
+.tweet-media.is-portrait  { aspect-ratio: 1 / 1; }  /* */
+.tweet-media.is-square    { aspect-ratio: 1 / 1; }    /* */
+
+.tweet-media img {
+  width: 100%;
+  height: 100%;        /*  */
+  object-fit: cover;   /*  */
+  display: block;
+}
+
+.tweet-media.is-portrait {
+  aspect-ratio: 1 / 1;   /*  */
+  max-height: 350px;     /* */
+}
+
+.tweet-media.is-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;     /*  */
+}
+/* */
+.hidden { display: none !important; }
+
+
+    .tweet-actionbar {
+      display: flex; align-items: center; justify-content: space-between; margin-left: 48px; margin-top: 8px;
+    }
+    .tweet-actionbar .action {
+      color: #71767b; font-size: 15px; display: flex; align-items: center; gap: 6px; cursor: pointer;
+      transition: color 0.18s, background 0.18s; border-radius: 20px; padding: 6px 10px;
+    }
+    .tweet-actionbar .action:hover { background: #222; color: #1d9bf0; }
+    .tweet-actionbar .action.active { background: #1a2b4c; color: #fff; }
+    .tweet-actionbar .action-group { display: flex; align-items: center; gap: 8px; }
+
+    .count { min-width: 1.5ch; text-align: right; }
+
+    /* Modals */
+    .comment-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .comment-modal {
+      background: #16181c; border-radius: 16px; padding: 24px; min-width: 320px; max-width: 640px;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 16px;
+    }
+    .comment-modal textarea {
+      width: 100%; min-height: 80px; border-radius: 8px; border: 1px solid #2f3336; background: #202327;
+      color: #e7e9ea; padding: 10px; font-size: 15px; resize: vertical;
+    }
+    .comment-modal .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
+    .comment-modal button {
+      padding: 8px 18px; border-radius: 20px; border: none; font-size: 14px; font-weight: 600; cursor: pointer;
+      background: #1d9bf0; color: #fff;
+    }
+    .comment-modal button.cancel { background: #2f3336; color: #e7e9ea; }
+
+    @media (max-width: 1024px) {
+      .sidebar-left { display: none; }
+      .main-content { border-right: none; margin-left: 0; }
+    }
+    @media (max-width: 768px) {
+      .sidebar-left { display: none; }
+      .main-content { width: 100vw; min-width: 0; margin-left: 0; }
+      .search-bar-main { width: 100%; }
+      .topbar-right { gap: 6px; }
+      .pid-input { width: 130px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="x-layout">
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="topbar">
+        <div class="topbar-right" style="justify-content:flex-end;display:flex;width:100%">
+          <div class="mode-toggle" id="modeToggle" role="button" aria-pressed="false" title="Toggle mode">
+
+            <span class="toggle-option" data-mode="all">Entertainment Mode</span>
+            <span class="toggle-option active" data-mode="news">News Mode</span>
+          </div>
+
+            <button class="info-btn" id="modeInfoBtn" aria-expanded="false" aria-controls="modeInfo" title="What is this?">?</button>
+<div class="mode-info-popover" id="modeInfo" role="dialog" aria-modal="false">
+  <p><strong>Using FeedFrame</strong>, you can toggle between a “News Mode” and “Entertainment Mode”:</p>
+  <ul>
+    <li>In "News Mode", posts with language that is highly emotional and misleading are blurred out, while posts with language that is emotionally neutral and not misleading remain unblurred.</li>
+    <li>Media and content creators use specific words to capture your attention. For example, words like “shocking” are highly emotional and often misleading.</li>
+    <li>Importantly, posts are not blurred based on their source or political lean.</li>
+    <li>In “Entertainment Mode”, all posts remain unblurred, and you can browse your feed as you usually would.</li>
+    <li>In both modes, you can click on and interact with any of the posts, even if they are blurred.</li>
+  </ul>
+  <p>This tool is designed to give social media users more control over their attention. Specifically, you can decide when and whether to focus on using social media for reading neutral-toned news or for fun/entertainment.</p>
+</div>
+
+        </div>
+
+      </div>
+
+      <div class="feed-list" id="newsFeed">
+        <!-- ======= FEED (24 cards) ======= -->
+        <!-- t1 (blur) -->
+        <div class="tweet-card filtered" data-tweet-id="t1" data-text="BREAK FREE from ZYN: Reddit Bros Help Thousands Kick the Nicotine Habit for Good!!!" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">The New York Times <span class="verified">✔️</span></span>
+            <span class="tweet-handle">@nytimes</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">BREAK FREE from ZYN: Reddit Bros Help Thousands Kick the Nicotine Habit for Good!!!</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">8</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">14</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">210</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">4k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+        <!-- t2 (blur) -->
+        <div class="tweet-card filtered" data-tweet-id="t2" data-text="This HEART STOPPING Rescue that Plucked a Man from Death you have to watch." data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">The Associated Press <span class="verified">✔️</span></span>
+            <span class="tweet-handle">@AP</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">This HEART STOPPING Rescue that Plucked a Man from Death you have to watch.</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">6</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">17</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">189</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">9k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+        <!-- t3 (blur) -->
+        <div class="tweet-card filtered" data-tweet-id="t3" data-text="Central Park REBORN, Bringing New Life and Healing History with Incredible New Pool" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">TIME <span class="verified">✔️</span></span>
+            <span class="tweet-handle">@TIME</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">Central Park REBORN, Bringing New Life and Healing History with Incredible New Pool</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">5</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">12</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">172</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">5k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+        <!-- t4 (blur) -->
+        <div class="tweet-card filtered" data-tweet-id="t4" data-text="Klamath River Roars Back to Life in a Once-in-a-Lifetime RETURN TO GLORY... after 100 YEARS!" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">Natural News <span class="verified"></span></span>
+            <span class="tweet-handle">@natural news</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">Klamath River Roars Back to Life in a Once-in-a-Lifetime RETURN TO GLORY... after 100 YEARS!</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">3</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">9</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">120</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">6k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+        <!-- t5 (blur) -->
+        <div class="tweet-card filtered" data-tweet-id="t5" data-text="DEFY TIME: Turning Back the Clock and Feeling Stronger Than EVER. Pumping Iron is Their Secret!!" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">Ask Quora <span class="verified"></span></span>
+            <span class="tweet-handle">@AskQuoraCom</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">DEFY TIME: Turning Back the Clock and Feeling Stronger Than EVER. Pumping Iron is Their Secret!!</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">4</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">10</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">98</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">7k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+        <!-- t6 (blur) -->
+        <div class="tweet-card filtered" data-tweet-id="t6" data-text="INSIDE NYC'S HOTTEST HANGOUT: 500 People, Endless Games, and the Party You Never Saw Coming" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">Reddit,Inc. <span class="verified"></span></span>
+            <span class="tweet-handle">@Reddit</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">INSIDE NYC'S HOTTEST HANGOUT: 500 People, Endless Games, and the Party You Never Saw Coming</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">7</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">15</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">156</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">8k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+         <!-- t7 -->
+        <div class="tweet-card" data-tweet-id="t7" data-text="A Better Way To Get Around In The Amazon: Solar-Powered Canoes" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">Scientific American <span class="verified">✔️</span></span>
+            <span class="tweet-handle">@sciam</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">A Better Way To Get Around In The Amazon: Solar-Powered Canoes</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">2</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">11</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">134</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">5k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t8 -->
+        <div class="tweet-card" data-tweet-id="t8" data-text="What Would A Friendship With A.I. Look Like? Maybe Like Hers." data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">BBC News <span class="verified">✔️</span></span>
+            <span class="tweet-handle">@BBCNews</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">What Would A Friendship With A.I. Look Like? Maybe Like Hers.</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">4</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">9</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">121</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">6k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t9 -->
+        <div class="tweet-card" data-tweet-id="t9" data-text="The 36 Questions' Led To Love. That Was Just The Beginning." data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">Reuters <span class="verified">✔️</span></span>
+            <span class="tweet-handle">@Reuters</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">'The 36 Questions' Led To Love. That Was Just The Beginning.</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">3</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">8</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">97</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">7k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t10 -->
+        <div class="tweet-card" data-tweet-id="t10" data-text="Shell Recyclers In Connecticut Are Helping Oysters Find Homes" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">The National Enquirer <span class="verified"></span></span>
+            <span class="tweet-handle">@TheNationalEnq2</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">Shell Recyclers In Connecticut Are Helping Oysters Find Homes</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">2</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">7</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">83</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">8k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t11 -->
+        <div class="tweet-card" data-tweet-id="t11" data-text="A Slob, A Witch, A Lifelong Friend: America's Best Roommate Stories" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">The Funny Times <span class="verified"></span></span>
+            <span class="tweet-handle">@TheFunniesLOL</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">A Slob, A Witch, A Lifelong Friend: America's Best Roommate Stories</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">5</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">11</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">118</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">9k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t12 -->
+        <div class="tweet-card" data-tweet-id="t12" data-text="Spring Break For The Teens Of the Elite: Sun, Fun, And Networking" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">Heat Magazine <span class="verified"></span></span>
+            <span class="tweet-handle">@_HeatMagazine_</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">Spring Break For The Teens Of the Elite: Sun, Fun, And Networking</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">6</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">10</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">95</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">4k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t13 (blur) -->
+        <div class="tweet-card filtered" data-tweet-id="t13" data-text="The Infuriating Truth: How AI is KILLING the Very Jobs It Promised to Create. Now Computer Science Grads bear the cost." data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">Bloomberg <span class="verified">✔️</span></span>
+            <span class="tweet-handle">@business</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">The Infuriating Truth: How AI is KILLING the Very Jobs It Promised to Create. Now Computer Science Grads bear the cost.</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">9</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">16</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">180</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">5k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t14 (blur) -->
+        <div class="tweet-card filtered" data-tweet-id="t14" data-text="MEASLES CRISIS: Deadly Outbreak Spirals Out of Control as Health Officials Struggle to Contain It" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">Scientific American <span class="verified">✔️</span></span>
+            <span class="tweet-handle">@sciam</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">MEASLES CRISIS: Deadly Outbreak Spirals Out of Control as Health Officials Struggle to Contain It</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">10</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">21</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">205</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">6k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t15 (blur) -->
+        <div class="tweet-card filtered" data-tweet-id="t15" data-text="The Brutal Reality for Families COVID Left Behind: the Emotional Wounds That Will NEVER HEAL" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">The Washington Post <span class="verified">✔️</span></span>
+            <span class="tweet-handle">@washingtonpost</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">The Brutal Reality for Families COVID Left Behind: the Emotional Wounds That Will NEVER HEAL</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">6</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">13</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">141</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">7k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t16 (blur) -->
+        <div class="tweet-card filtered" data-tweet-id="t16" data-text="France ENGULFED: Largest Wildfire in Decades Rages Across the Country" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">Natural News <span class="verified"></span></span>
+            <span class="tweet-handle">@natural news</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">France ENGULFED: Largest Wildfire in Decades Rages Across the Country</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">4</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">9</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">102</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">8k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t17 (blur) -->
+        <div class="tweet-card filtered" data-tweet-id="t17" data-text="TERRIFYING TRUTH: Nearly 50% of U.S. MURDERERS Walk Away with No Charges" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">The News Punch <span class="verified"></span></span>
+            <span class="tweet-handle">@thenewspunchh</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">TERRIFYING TRUTH: Nearly 50% of U.S. MURDERERS Walk Away with No Charges</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">7</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">12</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">115</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">9k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t18 (blur) -->
+        <div class="tweet-card filtered" data-tweet-id="t18" data-text="Torrential RAIN TURNS HONG KONG into a WATERFALL City  Record Broken!" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">Weekly World News <span class="verified"></span></span>
+            <span class="tweet-handle">@weeklyworldnews</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">Torrential RAIN TURNS HONG KONG into a WATERFALL City  Record Broken!</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">5</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">9</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">99</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">4k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t19 -->
+        <div class="tweet-card" data-tweet-id="t19" data-text="Almost Half Of Americans Breathe Unhealthy Air, Report Finds" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">The New York Times <span class="verified">✔️</span></span>
+            <span class="tweet-handle">@nytimes</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">Almost Half Of Americans Breathe Unhealthy Air, Report Finds</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">4</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">12</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">150</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">5k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t20 -->
+        <div class="tweet-card" data-tweet-id="t20" data-text="Is All Of This Self-Monitoring Making Us Paranoid?" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">BBC News <span class="verified">✔️</span></span>
+            <span class="tweet-handle">@BBCNews</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">Is All Of This Self-Monitoring Making Us Paranoid?</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">3</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">7</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">88</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">6k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t21 -->
+        <div class="tweet-card" data-tweet-id="t21" data-text="Camp Mystic Cabins Stood In An 'Extremely Hazardous' Floodway" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">The Associated Press <span class="verified">✔️</span></span>
+            <span class="tweet-handle">@AP</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">Camp Mystic Cabins Stood In An 'Extremely Hazardous' Floodway</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">6</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">9</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">101</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">7k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t22 -->
+        <div class="tweet-card" data-tweet-id="t22" data-text="How Fertilizer Poisoned So Much Farmland" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">Ask Quora <span class="verified"></span></span>
+            <span class="tweet-handle">@AskQuoraCom</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">How Fertilizer Poisoned So Much Farmland</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">4</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">8</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">84</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">8k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t23 -->
+        <div class="tweet-card" data-tweet-id="t23" data-text="He Was Held Captive In His Room For Decades. Then He Set It On Fire." data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">The News Punch <span class="verified"></span></span>
+            <span class="tweet-handle">@thenewspunchh</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">He Was Held Captive In His Room For Decades. Then He Set It On Fire.</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">5</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">9</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">90</span></span><!-- optional: replace "ninety" with 90 if you prefer numbers only -->
+            <span class="action" data-action="stats">👁️ <span class="count">9k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+
+        <!-- t24 -->
+        <div class="tweet-card" data-tweet-id="t24" data-text="Third Suspect Arrested After Man Was Kidnapped And Tortured For Bitcoin Wallet" data-type="news" data-emotional="false">
+          <div class="tweet-header">
+            <img class="avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="avatar" />
+            <span class="tweet-username">The National Enquirer <span class="verified"></span></span>
+            <span class="tweet-handle">@TheNationalEnq2</span><span class="tweet-dot">·</span><span class="tweet-time">1m</span><span class="tweet-actions-right">⋯</span>
+          </div>
+          <div class="tweet-body">Third Suspect Arrested After Man Was Kidnapped And Tortured For Bitcoin Wallet</div>
+          <div class="tweet-media"><img src="https://placehold.co/680x340/222/fff?text=Image" alt="media" /></div>
+          <div class="tweet-actionbar">
+            <span class="action" data-action="comment">💬 <span class="count">4</span></span>
+            <span class="action" data-action="retweet">🔄 <span class="count">8</span></span>
+            <span class="action" data-action="like">❤️ <span class="count">92</span></span>
+            <span class="action" data-action="stats">👁️ <span class="count">4k</span></span>
+            <span class="action-group"><span class="action" data-action="bookmark">🔖</span><span class="action" data-action="share">↗️</span></span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ====== Logs ======
+    // 全局日志
+    const userLogs = [];
+    function logAction(action, detail = {}) {
+  const ts = new Date().toISOString();
+
+  // 读取当前模式（优先 ffGetMode，其次从切换按钮上读取）
+  let mode = 'news';
+  try {
+    mode =
+      (window.ffGetMode && window.ffGetMode()) ||
+      document.getElementById('modeToggle')
+        ?.querySelector('.toggle-option.active')
+        ?.dataset.mode ||
+      'news';
+  } catch (_) {}
+
+  const ev = { action, detail: { ...detail, mode }, ts };
+  userLogs.push(ev);
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'ff_log', ...ev }, '*');
+  }
+}
+
+
+    // 
+    window.addEventListener('message', (e) => {
+      const msg = e.data;
+      if (msg && msg.type === 'ff_request_dump') {
+        window.parent?.postMessage({ type: 'ff_log_bulk', payload: userLogs }, '*');
+      }
+    });
+
+    // ====== Export CSV ======
+    /*
+    function exportLogsAsCSV() {
+      const pid = (document.getElementById('pidInput').value || '').trim();
+      const header = [
+        'participantId', 'startTime', 'endTime', 'actionCount',
+        'toggleCount','likeCount','commentCount','retweetCount','statsCount','bookmark','share',
+        'actions'
+      ];
+      const row = [
+        pid,
+        startTime.toISOString(),
+        endTime ? endTime.toISOString() : '',
+        userLogs.length,
+        actionCounts.toggle,
+        actionCounts.like,
+        actionCounts.comment,
+        actionCounts.retweet,
+        actionCounts.stats,
+        actionCounts.bookmark,
+        actionCounts.share,
+        JSON.stringify(userLogs).replace(/"/g, '""')
+      ];
+      const csv = [header.join(','), row.join(',')].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `user_logs_${pid || 'NA'}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+*/
+
+    // ====== Actions (event delegation) ======
+    document.getElementById('newsFeed').addEventListener('click', onActionClick);
+
+    function onActionClick(e) {
+      const el = e.target.closest('.action');
+      if (!el) return;
+      const card = el.closest('.tweet-card');
+      const tweetId = card?.dataset.tweetId;
+      const tweetText = card?.dataset.text;
+      const action = el.dataset.action;
+      if (!action) return;
+      const cards = Array.from(document.querySelectorAll('#newsFeed .tweet-card'));
+      const tweetIndex = cards.indexOf(card);
+
+      // UI
+      switch (action) {
+        case 'like':
+          toggleActiveWithCount(el, 'click_like', tweetIndex);
+          break;
+        case 'retweet':
+          toggleActiveWithCount(el, 'click_retweet', tweetIndex);
+          break;
+        case 'comment':
+          el.classList.add('active');
+          el.setAttribute('aria-pressed', 'true');
+          showCommentModal(el, tweetIndex);
+          break;
+        case 'stats':
+          el.classList.add('active');
+          el.setAttribute('aria-pressed', 'true');
+          showViewsModal(el);
+          break;
+        case 'bookmark':
+          const nowActive = el.classList.toggle('active');
+          el.setAttribute('aria-pressed', String(nowActive));
+          break;
+        case 'share':
+          toggleActiveWithCount(el, 'click_share', tweetIndex);
+          break;
+        default:
+          break;
+      }
+      // 
+      if (action === 'like' || action === 'retweet' || action === 'bookmark' || action === 'share') {
+        // 
+        const isActive = el.classList.contains('active');
+        logAction('click_' + action, { tweetId, tweetText, active: isActive });
+      } else if (action === 'comment' || action === 'stats') {
+        logAction('click_' + action, { tweetId, tweetText });
+      }
+    }
+
+    function toggleActiveWithCount(el, logName, tweetIndex) {
+      const wasActive = el.classList.toggle('active');
+      el.setAttribute('aria-pressed', String(wasActive));
+      updateCount(el, wasActive ? +1 : -1);
+      //
+    }
+
+    function updateCount(el, delta) {
+      const countNode = el.querySelector('.count');
+      if (!countNode) return;
+      const raw = (countNode.textContent || '').replace(/,/g, '').trim();
+      let n = parseInt(raw, 10);
+      if (Number.isNaN(n)) n = 0;
+      n = Math.max(0, n + delta);
+      countNode.textContent = n.toLocaleString();
+    }
+
+    // Share button now only toggles highlight and logs, no device share or clipboard
+
+    // ====== Comment Modal ======
+    function showCommentModal(btnEl, tweetIndex) {
+      if (document.getElementById('commentModalOverlay')) return;
+      const overlay = document.createElement('div');
+      overlay.className = 'comment-modal-overlay';
+      overlay.id = 'commentModalOverlay';
+      overlay.innerHTML = `
+        <div class="comment-modal" role="dialog" aria-modal="true" aria-labelledby="cm-title">
+          <div id="cm-title" style="font-weight:700;font-size:18px;">Add a comment</div>
+          <textarea id="commentInput" placeholder="Write your comment..."></textarea>
+          <div class="modal-actions">
+            <button class="cancel" id="cm-cancel">Cancel</button>
+            <button id="cm-send">Send</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      document.body.style.overflow = 'hidden';
+      const textarea = document.getElementById('commentInput');
+      textarea.focus();
+
+      // Click out to close
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeCommentModal();
+      });
+
+      // Buttons
+      document.getElementById('cm-cancel').onclick = closeCommentModal;
+      document.getElementById('cm-send').onclick = () => sendComment(tweetIndex);
+
+      // ESC to close
+      function onEsc(ev) {
+        if (ev.key === 'Escape') closeCommentModal();
+      }
+      document.addEventListener('keydown', onEsc, { once: true });
+
+      // Save active button ref
+      window._activeCommentBtn = btnEl;
+    }
+
+    function closeCommentModal() {
+      const overlay = document.getElementById('commentModalOverlay');
+      if (overlay) overlay.remove();
+      document.body.style.overflow = '';
+      if (window._activeCommentBtn) {
+        window._activeCommentBtn.classList.remove('active');
+        window._activeCommentBtn.setAttribute('aria-pressed', 'false');
+        window._activeCommentBtn = null;
+      }
+    }
+
+    function sendComment(tweetIndex) {
+      const textarea = document.getElementById('commentInput');
+      const comment = textarea.value.trim();
+      const card = document.querySelectorAll('#newsFeed .tweet-card')[tweetIndex];
+      const tweetId = card?.dataset.tweetId;
+      const tweetText = card?.dataset.text;
+      if (comment) {
+        logAction('send_comment', { tweetId, tweetText, comment });
+        // Increment comment count on the card
+        const commentBtn = card?.querySelector('.action[data-action="comment"]');
+        if (commentBtn) updateCount(commentBtn, +1);
+        try {
+  window.parent.postMessage({
+    type:  'ff_log',
+    action:'send_comment',
+    ts:    new Date().toISOString(),
+    detail:{ comment }
+  }, '*');
+} catch (e) {}
+        closeCommentModal();
+      } else {
+        textarea.focus();
+      }
+    }
+
+    // ====== Views Modal ======
+    function showViewsModal(btnEl) {
+      if (document.getElementById('viewsModalOverlay')) return;
+      const overlay = document.createElement('div');
+      overlay.className = 'comment-modal-overlay';
+      overlay.id = 'viewsModalOverlay';
+      overlay.innerHTML = `
+        <div class="comment-modal" role="dialog" aria-modal="true" aria-labelledby="views-title">
+          <div id="views-title" style="font-weight:700;font-size:20px;text-align:center;">Views</div>
+          <div style="margin-top:12px;text-align:center;font-size:15px;color:#e7e9ea;">Times this post was seen.</div>
+          <div class="modal-actions" style="justify-content:center;margin-top:20px;">
+            <button id="vm-close">Close</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      document.body.style.overflow = 'hidden';
+
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeViewsModal();
+      });
+      document.getElementById('vm-close').onclick = closeViewsModal;
+      function onEsc(ev) {
+        if (ev.key === 'Escape') closeViewsModal();
+      }
+      document.addEventListener('keydown', onEsc, { once: true });
+
+      window._activeViewsBtn = btnEl;
+    }
+
+    function closeViewsModal() {
+      const overlay = document.getElementById('viewsModalOverlay');
+      if (overlay) overlay.remove();
+      document.body.style.overflow = '';
+      if (window._activeViewsBtn) {
+        window._activeViewsBtn.classList.remove('active');
+        window._activeViewsBtn.setAttribute('aria-pressed', 'false');
+        window._activeViewsBtn = null;
+      }
+    }
+    // === 每次加载都随机（与 pid 无关） ===
+(function shuffleFeed() {
+  const feed = document.getElementById('newsFeed');
+  if (!feed) return;
+  const cards = Array.from(feed.children);
+  if (cards.length < 2) return;
+
+  // Fisher–Yates （Refresh by Math.random）
+  for (let i = cards.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cards[i], cards[j]] = [cards[j], cards[i]];
+  }
+
+  // reinsert into DOM
+  cards.forEach(c => feed.appendChild(c));
+
+  // 
+  try { logAction('shuffle_cards', { order: cards.map(c => c.dataset.tweetId) }); } catch(_) {}
+})();
+  // 
+function setMediaRatioByImage(img) {
+  const media = img.closest('.tweet-media');
+  if (!media) return;
+
+  const decide = () => {
+    const w = img.naturalWidth, h = img.naturalHeight;
+    if (!w || !h) return;
+    const r = w / h;
+
+    media.classList.remove('is-landscape','is-portrait','is-square');
+    if (r >= 1.2)      media.classList.add('is-landscape');  
+    else if (r <= 0.9) media.classList.add('is-portrait');  
+    else               media.classList.add('is-square');    
+  };
+
+  if (img.complete) decide();
+  else img.addEventListener('load', decide, { once: true });
+}
+
+(function applyImages() {
+ 
+  const BASE = 'assets/img/';
+
+  const MAP = {
+    t1:'image15', t2:'image13', t3:'image7',  t4:'image11', t5:'image3',  t6:'image2',
+    t7:'image10', t8:'image9',  t9:'image1',  t10:'image14', t11:'image5', t12:'image16',
+    t13:'image23', t14:'image20', t15:'image32', t16:'image17', t17:'image21', t18:'image18',
+    t19:'image29', t20:'image22', t21:'image19', t22:'image27', t23:'image30', t24:'image25'
+  };
+
+  function setImgWithFallback(img, baseName) {
+    const exts = ['.jpg', '.jpeg', '.png', '.webp'];
+    let i = 0;
+    const bust = Date.now(); 
+    const tryNext = () => {
+      if (i >= exts.length) {
+        
+        img.closest('.tweet-media')?.classList.add('hidden');
+        return;
+      }
+      img.onerror = () => { i++; tryNext(); };
+      img.src = `${BASE}${baseName}${exts[i]}?v=${bust}`;
+    };
+    tryNext();
+  }
+
+
+  (function applySourceAvatars() {
+    // 
+    const BASE = 'assets/img/avatars/';
+
+  // 
+  const norm = s => (s || '').toLowerCase().replace(/^@/, '').replace(/\s+/g, '');
+
+  // 
+  const MAP = {
+    ap: 'AP',
+    askquoracom: 'AskQuoraCom',
+    bbcnews: 'BBCNews',
+    business: 'business',
+    naturalnews: 'natural news',   // 
+    nytimes: 'nytimes',
+    reddit: 'Reddit',
+    reuters: 'Reuters',
+    sciam: 'sciam',
+    thefunnieslol: 'TheFunniesLOL',
+    thenationalenq2: 'TheNationalEnq2',
+    thenewspunchh: 'thenewspunchh',
+    time: 'TIME',
+    washingtonpost: 'washingtonpost',
+
+    heatmagazine: 'heatmagazine',   // 
+    weeklyworldnews: 'weeklyworldnews',// 
+  };
+
+  function setWithFallback(imgEl, baseName) {
+    const exts = ['.png', '.jpg', '.jpeg', '.webp'];
+    let i = 0;
+    const tryNext = () => {
+      if (i >= exts.length) return;
+      imgEl.onerror = () => { i++; tryNext(); };
+      // encodeURIComponent 
+      imgEl.src = BASE + encodeURIComponent(baseName + exts[i]) + '?v=1';
+    };
+    tryNext();
+  }
+
+  document.querySelectorAll('#newsFeed .tweet-card').forEach(card => {
+    const handleText = card.querySelector('.tweet-handle')?.textContent || '';
+    const nameText   = card.querySelector('.tweet-username')?.textContent || '';
+    const avatarEl   = card.querySelector('.tweet-header .avatar');
+    if (!avatarEl) return;
+
+    // 
+    let key = norm(handleText);
+    if (!MAP[key]) key = norm(nameText);
+
+    const base = MAP[key];
+    if (!base) return;
+
+    setWithFallback(avatarEl, base);
+    avatarEl.alt = (handleText || nameText).trim().replace(/^@/, '') + ' logo';
+    avatarEl.loading = 'lazy';
+  });
+})();
+
+  document.querySelectorAll('#newsFeed .tweet-card').forEach(card => {
+    const id = card.dataset.tweetId;
+    const baseName = MAP[id];
+    if (!baseName) return;
+
+    const img = card.querySelector('.tweet-media img');
+    if (!img) return;
+
+    const text = card.dataset.text || card.querySelector('.tweet-body')?.textContent || '';
+    img.loading = 'lazy';
+
+    setImgWithFallback(img, baseName);
+    setMediaRatioByImage(img);
+
+  });
+})();
+// === Mode Toggle Logic (remember initial filtered set) ===
+// === Mode Toggle Logic (remember initial filtered set) ===
+(function initModeToggle() {
+  const toggle = document.getElementById('modeToggle');
+  if (!toggle) return;
+
+  const MODE = { NEWS: 'news', ALL: 'all' };
+  let currentMode = MODE.NEWS;                 // news 
+  window.ffGetMode = () => currentMode;       //  getter
+
+  // 
+  const cards = Array.from(document.querySelectorAll('#newsFeed .tweet-card'));
+  const initialFilteredIds = new Set(
+    cards.filter(c => c.classList.contains('filtered'))
+         .map(c => c.dataset.tweetId)
+  );
+
+  // 
+  function shouldBlurInNews(card) {
+    const isNews = (card.dataset.type || '').toLowerCase() === 'news';
+    const isEmotional = (card.dataset.emotional || '').toLowerCase() === 'true';
+    const id = card.dataset.tweetId || '';
+    return (isNews && isEmotional) || initialFilteredIds.has(id);
+  }
+
+  function applyMode(mode) {
+    currentMode = mode;  // ★
+
+    cards.forEach(card => {
+      if (mode === MODE.ALL) {
+        card.classList.remove('filtered');
+      } else {
+        if (shouldBlurInNews(card)) card.classList.add('filtered');
+        else card.classList.remove('filtered');
+      }
+    });
+
+    // 
+    toggle.querySelectorAll('.toggle-option').forEach(o => o.classList.remove('active'));
+    toggle.querySelector(`[data-mode="${mode}"]`)?.classList.add('active');
+    toggle.setAttribute('aria-pressed', mode === MODE.ALL ? 'true' : 'false');
+
+    try { logAction('toggle_mode', { mode }); } catch (_) {}
+  }
+
+  //
+  toggle.addEventListener('click', () => {
+    const next = currentMode === MODE.NEWS ? MODE.ALL : MODE.NEWS;
+    applyMode(next);
+  });
+
+  // 
+  applyMode(MODE.NEWS);
+})();
+
+(function initModeInfo() {
+  const btn = document.getElementById('modeInfoBtn');
+  const pop = document.getElementById('modeInfo');
+  if (!btn || !pop) return;
+
+  const show = () => { pop.classList.add('show'); btn.setAttribute('aria-expanded','true'); };
+  const hide = () => { pop.classList.remove('show'); btn.setAttribute('aria-expanded','false'); };
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willShow = !pop.classList.contains('show');
+    if (willShow) show(); else hide();
+    try { logAction('toggle_help', { panel: 'mode_info', open: willShow }); } catch(_) {}
+  });
+
+  // 
+  document.addEventListener('click', (e) => {
+    if (!pop.classList.contains('show')) return;
+    if (!pop.contains(e.target) && e.target !== btn) hide();
+  });
+
+  // Esc 
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); });
+})();
+
+</script>
+</body>
+</html>
