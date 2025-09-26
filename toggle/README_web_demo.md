@@ -1,5 +1,5 @@
 This is a web demo we used in pilot study.
-We embeded the html index.html inside a qualtrics block using javascript toggle/qualtrics_embed.js.
+We insetred the html link (index.html) inside a qualtrics block using javascript (toggle/qualtrics_embed.js).
 
 UI: toggle/index.html is the participant-facing page.
 
